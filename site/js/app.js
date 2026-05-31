@@ -28,6 +28,7 @@ SELECT
   ROUND(AVG(n.rank), 2)                AS avg_rank_in_window,
   COUNT(DISTINCT n.scrape_date)        AS days_in_window,
   ROUND(AVG(n.score), 2)               AS avg_score_in_window,
+  MAX(n.score)                         AS max_score_in_window,
   BOOL_OR(n.source = 'imdb')           AS hit_imdb,
   BOOL_OR(n.source = 'kinopoisk')      AS hit_kinopoisk,
   sh.imdb_url, sh.kinopoisk_url
@@ -40,6 +41,7 @@ WHERE n.scrape_date >= DATE '${startOfMonth}'        -- start of current month (
   AND n.source IN ('imdb', 'kinopoisk')                -- which source(s) qualify (OR)
 GROUP BY sh.show_id, sh.assumed_title, sh.title_ru, sh.release_year,
          sh.imdb_url, sh.kinopoisk_url
+HAVING max_score_in_window > 6                       -- minimum peak score in window (aggregate filter)
 ORDER BY best_rank_in_window ASC, days_in_window DESC, avg_rank_in_window ASC
 LIMIT 100;`;
 }
