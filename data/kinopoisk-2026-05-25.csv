@@ -1,4 +1,4 @@
-rank,name_ru,name_en,url,score,votes,release_year,scraped_at
+rank,title_ru,title,url,score,votes,release_year,scraped_at
 1,Пацаны,The Boys,https://www.kinopoisk.ru/series/460586/,8.3,400228,2019,2026-05-25T19:09:14-07:00
 2,Эйфория,Euphoria,https://www.kinopoisk.ru/series/1178445/,7.5,456547,2019,2026-05-25T19:09:14-07:00
 3,Вне кампуса,Off Campus,https://www.kinopoisk.ru/series/11804709/,8.2,16112,2026,2026-05-25T19:09:14-07:00
