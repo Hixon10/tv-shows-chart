@@ -24,14 +24,14 @@ function buildDefaultQuery(builtAt) {
   return `${DEFAULT_QUERY_HEADER}
 SELECT
   sh.show_id, sh.assumed_title, sh.title_ru, sh.release_year,
+  sh.imdb_url, sh.kinopoisk_url,
   MIN(n.rank)                          AS best_rank_in_window,
-  ROUND(AVG(n.rank), 2)                AS avg_rank_in_window,
-  COUNT(DISTINCT n.scrape_date)        AS days_in_window,
-  ROUND(AVG(n.score), 2)               AS avg_score_in_window,
   MAX(n.score)                         AS max_score_in_window,
+  COUNT(DISTINCT n.scrape_date)        AS days_in_window,
+  ROUND(AVG(n.rank), 2)                AS avg_rank_in_window,
+  ROUND(AVG(n.score), 2)               AS avg_score_in_window,
   BOOL_OR(n.source = 'imdb')           AS hit_imdb,
-  BOOL_OR(n.source = 'kinopoisk')      AS hit_kinopoisk,
-  sh.imdb_url, sh.kinopoisk_url
+  BOOL_OR(n.source = 'kinopoisk')      AS hit_kinopoisk
 FROM snapshots n
 JOIN shows sh USING (show_id)
 WHERE n.scrape_date >= DATE '${startOfMonth}'        -- start of current month (build time)
