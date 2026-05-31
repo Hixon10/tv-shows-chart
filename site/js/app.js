@@ -104,9 +104,14 @@ async function runCurrent() {
 function renderTable(columns, rows) {
   clear(table);
   const showIdIdx = columns.indexOf('show_id');
+  // Hide show_id only when at least one title column is present to receive
+  // the per-show drill-down link. Otherwise render show_id itself as the
+  // clickable link.
+  const hasTitleColumn = columns.some((c) => TITLE_COLUMNS.has(c));
+  const hideShowId = showIdIdx >= 0 && hasTitleColumn;
   const visibleColumns = columns
     .map((name, i) => ({ name, i }))
-    .filter((c) => c.name !== 'show_id');
+    .filter((c) => !(hideShowId && c.name === 'show_id'));
 
   // header
   const thead = el('thead', {},
@@ -158,6 +163,14 @@ function renderCell(colName, value, showId) {
   if (isTitle && isShowId(showId)) {
     return el('td', {},
       el('a', { href: `show.html?id=${encodeURIComponent(showId)}` }, value)
+    );
+  }
+
+  // When show_id is rendered as its own column (no title column to anchor
+  // the drill-down on), make it the clickable link.
+  if (colName === 'show_id' && isShowId(value)) {
+    return el('td', {},
+      el('a', { href: `show.html?id=${encodeURIComponent(value)}` }, value)
     );
   }
 
