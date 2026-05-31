@@ -1,0 +1,119 @@
+# ============================================================
+# Default behavior: normalize all text files to LF in the repo
+# and check them out with LF line endings on every platform.
+# ============================================================
+* text=auto eol=lf
+
+# ------------------------------------------------------------
+# JavaScript / TypeScript / Node
+# ------------------------------------------------------------
+*.js     text eol=lf
+*.cjs    text eol=lf
+*.mjs    text eol=lf
+*.jsx    text eol=lf
+*.ts     text eol=lf
+*.tsx    text eol=lf
+*.json   text eol=lf
+*.jsonc  text eol=lf
+*.map    text eol=lf
+
+# ------------------------------------------------------------
+# Web: HTML / CSS / templates
+# ------------------------------------------------------------
+*.html   text eol=lf
+*.htm    text eol=lf
+*.css    text eol=lf
+*.scss   text eol=lf
+*.sass   text eol=lf
+*.less   text eol=lf
+*.svg    text eol=lf
+
+# ------------------------------------------------------------
+# Config / docs / data (text)
+# ------------------------------------------------------------
+*.md     text eol=lf
+*.markdown text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.toml   text eol=lf
+*.xml    text eol=lf
+*.csv    text eol=lf
+*.tsv    text eol=lf
+*.env    text eol=lf
+*.txt    text eol=lf
+
+# Dotfiles commonly found in Node projects
+.gitattributes text eol=lf
+.gitignore     text eol=lf
+.editorconfig  text eol=lf
+.npmrc         text eol=lf
+.nvmrc         text eol=lf
+.prettierrc    text eol=lf
+.eslintrc      text eol=lf
+.babelrc       text eol=lf
+
+# Lockfiles (keep LF, mark for nicer diffs)
+package-lock.json   text eol=lf
+yarn.lock           text eol=lf -diff
+pnpm-lock.yaml      text eol=lf -diff
+
+# ------------------------------------------------------------
+# Shell / scripts
+# ------------------------------------------------------------
+*.sh     text eol=lf
+*.bash   text eol=lf
+
+# Windows scripts MUST use CRLF
+*.bat    text eol=crlf
+*.cmd    text eol=crlf
+*.ps1    text eol=crlf
+
+# ------------------------------------------------------------
+# SQL (DuckDB queries / migrations)
+# ------------------------------------------------------------
+*.sql    text eol=lf
+
+# ------------------------------------------------------------
+# Binary files — never modify line endings, never diff
+# ------------------------------------------------------------
+# DuckDB / SQLite database files
+*.duckdb      binary
+*.duckdb.wal  binary
+*.db          binary
+*.sqlite      binary
+*.sqlite3     binary
+*.parquet     binary
+*.arrow       binary
+
+# Images
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.webp   binary
+*.avif   binary
+
+# Fonts
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.eot    binary
+*.otf    binary
+
+# Media
+*.mp4    binary
+*.webm   binary
+*.mp3    binary
+*.wav    binary
+*.pdf    binary
+
+# Archives
+*.zip    binary
+*.gz     binary
+*.tgz    binary
+*.7z     binary
+
+# Compiled / native node addons
+*.node   binary
+*.wasm   binary

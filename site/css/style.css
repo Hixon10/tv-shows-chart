@@ -1,0 +1,175 @@
+:root {
+  color-scheme: light dark;
+  --fg: #1a1a1a;
+  --fg-muted: #555;
+  --bg: #fafafa;
+  --bg-panel: #ffffff;
+  --border: #d8d8d8;
+  --accent: #0052cc;
+  --accent-fg: #ffffff;
+  --code-bg: #f1f3f5;
+  --error-bg: #fff5f5;
+  --error-fg: #b00020;
+  --error-border: #f5b5b5;
+  --info-bg: #eff7ff;
+  --info-fg: #0a4d99;
+  --info-border: #bcd6f0;
+  --row-alt: #f7f7f7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #eaeaea;
+    --fg-muted: #a5a5a5;
+    --bg: #161616;
+    --bg-panel: #1f1f1f;
+    --border: #3a3a3a;
+    --accent: #4c9aff;
+    --accent-fg: #0b1b33;
+    --code-bg: #262626;
+    --error-bg: #2a1010;
+    --error-fg: #ff8080;
+    --error-border: #5a2020;
+    --info-bg: #0f1c2d;
+    --info-fg: #84b6f4;
+    --info-border: #224468;
+    --row-alt: #1c1c1c;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+header.site-header {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+header.site-header h1 { margin: 0; font-size: 18px; }
+header.site-header nav a { margin-right: 12px; }
+header.site-header .meta { color: var(--fg-muted); font-size: 12px; }
+
+main { padding: 16px 20px; max-width: 1280px; margin: 0 auto; }
+
+section { margin-bottom: 24px; }
+section h2 { margin: 0 0 8px 0; font-size: 16px; }
+
+details.schema {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+details.schema summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+details.schema table {
+  margin-top: 8px;
+  border-collapse: collapse;
+  width: 100%;
+}
+details.schema th, details.schema td {
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  padding: 4px 6px;
+  font-size: 13px;
+  vertical-align: top;
+}
+details.schema code { background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.editor textarea {
+  width: 100%;
+  min-height: 140px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  color: var(--fg);
+  resize: vertical;
+}
+.editor .controls { display: flex; gap: 8px; align-items: center; }
+button {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+button:disabled { opacity: 0.6; cursor: progress; }
+
+.status { padding: 8px 12px; border-radius: 4px; font-size: 13px; margin-top: 4px; }
+.status-info  { background: var(--info-bg);  color: var(--info-fg);  border: 1px solid var(--info-border); }
+.status-error { background: var(--error-bg); color: var(--error-fg); border: 1px solid var(--error-border); white-space: pre-wrap; font-family: ui-monospace, monospace; }
+.status-hidden { display: none; }
+
+.hint { color: var(--fg-muted); font-size: 12px; margin-top: 4px; }
+
+.table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: auto;
+  max-height: 70vh;
+  background: var(--bg-panel);
+}
+table.results {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+table.results th, table.results td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  white-space: nowrap;
+}
+table.results th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-panel);
+  z-index: 1;
+}
+table.results tr:nth-child(even) td { background: var(--row-alt); }
+table.results td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.results .empty { color: var(--fg-muted); font-style: italic; }
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.stat-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+.stat-card .label { color: var(--fg-muted); font-size: 12px; }
+.stat-card .value { font-size: 18px; font-weight: 600; margin-top: 2px; }

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Show details — TV Shows Chart</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <h1 id="title-h1">Show</h1>
+    <nav>
+      <a href="index.html">← Back to all shows</a>
+    </nav>
+    <span class="meta" id="build-meta"></span>
+  </header>
+
+  <main>
+    <section id="header-section">
+      <p id="subtitle" class="hint"></p>
+      <p id="links"></p>
+    </section>
+
+    <section>
+      <h2>Aggregate stats</h2>
+      <div class="stat-grid" id="stat-grid"></div>
+    </section>
+
+    <section>
+      <h2>Daily rank history</h2>
+      <div class="table-wrap"><table class="results" id="history"></table></div>
+    </section>
+
+    <span id="status" class="status-hidden"></span>
+  </main>
+
+  <script type="module" src="js/show.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "name": "tv-shows-chart",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Static site for browsing IMDb / Kinopoisk TV-show rank snapshots with DuckDB-WASM.",
+  "scripts": {
+    "build": "node scripts/build-site.mjs",
+    "build:db": "node scripts/build-duckdb.mjs",
+    "update:vendor": "node scripts/update-vendor.mjs",
+    "serve": "node scripts/serve.mjs",
+    "e2e": "node scripts/e2e-check.mjs"
+  },
+  "devDependencies": {
+    "@duckdb/duckdb-wasm": "1.32.0",
+    "@duckdb/node-api": "1.5.3-r.2",
+    "esbuild": "^0.28.0",
+    "puppeteer-core": "^25.1.0"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

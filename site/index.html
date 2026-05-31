@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TV Shows Chart</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <h1>TV Shows Chart</h1>
+    <nav>
+      <a href="index.html">Browse</a>
+    </nav>
+    <span class="meta" id="build-meta">Loading DuckDB…</span>
+  </header>
+
+  <main>
+    <section>
+      <details class="schema" id="schema-panel">
+        <summary>Available tables, view &amp; macros</summary>
+        <p>The database is read-only. All queries run in your browser via DuckDB-WASM.</p>
+
+        <h3>Table <code>snapshots</code></h3>
+        <p>One row per (source × scrape day × rank position).</p>
+        <table>
+          <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>show_id</code></td><td>VARCHAR (md5 hex)</td><td>Stable per-show identifier across rebuilds.</td></tr>
+            <tr><td><code>source</code></td><td>VARCHAR</td><td>'imdb' or 'kinopoisk'.</td></tr>
+            <tr><td><code>is_imdb</code> / <code>is_kinopoisk</code></td><td>BOOLEAN</td><td>Convenience source flags.</td></tr>
+            <tr><td><code>scrape_date</code></td><td>DATE</td><td>From filename (timezone-safe).</td></tr>
+            <tr><td><code>rank</code></td><td>INTEGER</td><td>Position in the source's chart on that day.</td></tr>
+            <tr><td><code>title</code>, <code>title_ru</code></td><td>VARCHAR</td><td>As scraped that day.</td></tr>
+            <tr><td><code>url</code></td><td>VARCHAR</td><td>Source page for the show.</td></tr>
+            <tr><td><code>source_id</code></td><td>VARCHAR</td><td>IMDb tt-id or Kinopoisk numeric id.</td></tr>
+            <tr><td><code>score</code></td><td>DOUBLE</td><td>Source's user score on that day.</td></tr>
+            <tr><td><code>votes</code></td><td>BIGINT</td><td>Vote count on that day.</td></tr>
+            <tr><td><code>release_year</code></td><td>INTEGER</td><td></td></tr>
+            <tr><td><code>scraped_at</code></td><td>TIMESTAMPTZ</td><td>Precise scrape timestamp.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>View <code>shows</code></h3>
+        <p>One row per show with cross-source identity already resolved.</p>
+        <table>
+          <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>show_id</code></td><td>VARCHAR</td><td>Include this column to enable per-show links in the table below.</td></tr>
+            <tr><td><code>assumed_title</code></td><td>VARCHAR</td><td>IMDb title preferred, falling back to Kinopoisk English / Russian.</td></tr>
+            <tr><td><code>title_ru</code></td><td>VARCHAR</td><td>Russian title from Kinopoisk if available.</td></tr>
+            <tr><td><code>release_year</code></td><td>INTEGER</td><td></td></tr>
+            <tr><td><code>imdb_url</code>, <code>kinopoisk_url</code></td><td>VARCHAR</td><td>NULL when the show is not present on that source.</td></tr>
+            <tr><td><code>days_in_rating</code></td><td>BIGINT</td><td>Distinct scrape dates the show appears on.</td></tr>
+            <tr><td><code>first_seen</code>, <code>last_seen</code></td><td>DATE</td><td></td></tr>
+            <tr><td><code>best_rank</code>, <code>worst_rank</code>, <code>avg_rank</code></td><td>INTEGER / DOUBLE</td><td></td></tr>
+            <tr><td><code>avg_score</code>, <code>latest_score</code>, <code>latest_votes</code></td><td>DOUBLE / BIGINT</td><td></td></tr>
+            <tr><td><code>present_on_imdb</code>, <code>present_on_kinopoisk</code></td><td>BOOLEAN</td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Table macros</h3>
+        <p>Use these in <code>FROM</code>. They return tables; combine them with <code>JOIN</code> or <code>IN (SELECT …)</code>.</p>
+        <table>
+          <thead><tr><th>Macro</th><th>Returns</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>scrape_date_between(d1, d2)</code></td>
+              <td>show_ids active in the window</td>
+              <td><code>SELECT s.* FROM shows s JOIN scrape_date_between('2026-05-01','2026-05-30') USING (show_id);</code></td>
+            </tr>
+            <tr>
+              <td><code>hot_in(d1, d2)</code></td>
+              <td>shows + in-window aggregates, sorted by avg rank</td>
+              <td><code>SELECT * FROM hot_in('2026-05-25','2026-05-30') LIMIT 20;</code></td>
+            </tr>
+            <tr>
+              <td><code>rank_history(show_id)</code></td>
+              <td>per-day rank, score, votes per source</td>
+              <td><code>SELECT * FROM rank_history((SELECT show_id FROM shows LIMIT 1));</code></td>
+            </tr>
+            <tr>
+              <td><code>find_show(q)</code></td>
+              <td>shows whose assumed/Russian title contains <code>q</code> (case-insensitive)</td>
+              <td><code>SELECT * FROM find_show('boys');</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
+    </section>
+
+    <section>
+      <h2>Query</h2>
+      <div class="editor">
+        <textarea id="sql" spellcheck="false"></textarea>
+        <div class="controls">
+          <button id="run">Run (Ctrl+Enter)</button>
+          <span id="status" class="status-hidden"></span>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Results</h2>
+      <div class="table-wrap"><table class="results" id="results"></table></div>
+      <p class="hint" id="results-hint"></p>
+    </section>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
