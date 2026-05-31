@@ -27,12 +27,21 @@ export function formatNumber(v, opts = {}) {
   return v.toFixed(digits);
 }
 
-export function formatCell(value) {
+// Column-name regex used by formatCell to skip thousand-separators on
+// year-like integer columns (so 2020 renders as "2020", not "2,020").
+const PLAIN_INTEGER_COLUMN_RE = /(^|_)year(s)?$/i;
+
+export function formatCell(value, opts = {}) {
   if (value == null) return '';
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   if (typeof value === 'bigint') return value.toString();
   if (typeof value === 'number') {
-    if (Number.isInteger(value)) return value.toLocaleString();
+    if (Number.isInteger(value)) {
+      if (opts.columnName && PLAIN_INTEGER_COLUMN_RE.test(opts.columnName)) {
+        return String(value);
+      }
+      return value.toLocaleString();
+    }
     return value.toFixed(3).replace(/\.?0+$/, '');
   }
   if (typeof value === 'boolean') return value ? 'true' : 'false';

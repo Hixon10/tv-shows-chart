@@ -8,22 +8,47 @@ import {
   el, clear, urlHostLabel, formatCell, setStatus, fetchBuildMeta, isShowId,
 } from './helpers.js';
 
-const DEFAULT_QUERY = `-- Top 50 shows by days in rating. Run any DuckDB SQL here.
--- Include show_id in your SELECT to enable per-show drill-down links.
-SELECT show_id, assumed_title, title_ru, release_year,
-       days_in_rating, best_rank, avg_rank, avg_score,
-       imdb_url, kinopoisk_url
-FROM shows
-ORDER BY days_in_rating DESC, avg_rank ASC
-LIMIT 50;`;
+const DEFAULT_QUERY_HEADER = `-- Hot shows this month: chart top-20 on IMDb or Kinopoisk during the current
+-- month (at build time), restricted to recently released shows.
+-- Each WHERE line below is independently editable — change ranks, the release
+-- year cutoff, the date window, or which sources qualify.`;
+
+function buildDefaultQuery(builtAt) {
+  const dt = builtAt ? new Date(builtAt) : new Date();
+  const y  = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getUTCDate()).padStart(2, '0');
+  const startOfMonth = `${y}-${mm}-01`;
+  const buildDay     = `${y}-${mm}-${dd}`;
+  const recentReleaseSince = y - 1;
+  return `${DEFAULT_QUERY_HEADER}
+SELECT
+  sh.show_id, sh.assumed_title, sh.title_ru, sh.release_year,
+  MIN(n.rank)                          AS best_rank_in_window,
+  ROUND(AVG(n.rank), 2)                AS avg_rank_in_window,
+  COUNT(DISTINCT n.scrape_date)        AS days_in_window,
+  ROUND(AVG(n.score), 2)               AS avg_score_in_window,
+  BOOL_OR(n.source = 'imdb')           AS hit_imdb,
+  BOOL_OR(n.source = 'kinopoisk')      AS hit_kinopoisk,
+  sh.imdb_url, sh.kinopoisk_url
+FROM snapshots n
+JOIN shows sh USING (show_id)
+WHERE n.scrape_date >= DATE '${startOfMonth}'        -- start of current month (build time)
+  AND n.scrape_date <= DATE '${buildDay}'            -- build day (upper bound)
+  AND n.rank BETWEEN 1 AND 20                          -- chart positions to include
+  AND sh.release_year >= ${recentReleaseSince}                       -- only recently released shows
+  AND n.source IN ('imdb', 'kinopoisk')                -- which source(s) qualify (OR)
+GROUP BY sh.show_id, sh.assumed_title, sh.title_ru, sh.release_year,
+         sh.imdb_url, sh.kinopoisk_url
+ORDER BY best_rank_in_window ASC, days_in_window DESC, avg_rank_in_window ASC
+LIMIT 100;`;
+}
 
 const sqlBox    = document.getElementById('sql');
 const runBtn    = document.getElementById('run');
 const statusBox = document.getElementById('status');
 const table     = document.getElementById('results');
 const hint      = document.getElementById('results-hint');
-
-sqlBox.value = DEFAULT_QUERY;
 
 runBtn.addEventListener('click', () => runCurrent());
 sqlBox.addEventListener('keydown', (e) => {
@@ -33,23 +58,28 @@ sqlBox.addEventListener('keydown', (e) => {
   }
 });
 
-// Header build-meta.
+// Header build-meta + populate the default query with build-time dates +
+// auto-run on load. Falls back to the browser's current date if meta is
+// unavailable for any reason.
 fetchBuildMeta().then((m) => {
   const headerMeta = document.getElementById('build-meta');
-  if (!headerMeta) return;
-  if (!m) { headerMeta.textContent = ''; return; }
-  const dt = m.built_at ? new Date(m.built_at).toISOString().slice(0, 19).replace('T', ' ') + ' UTC' : '';
-  const parts = [
-    dt && `built ${dt}`,
-    typeof m.shows === 'number' && `${m.shows.toLocaleString()} shows`,
-    typeof m.snapshots === 'number' && `${m.snapshots.toLocaleString()} snapshots`,
-    typeof m.csv_files === 'number' && `${m.csv_files} CSV files`,
-  ].filter(Boolean);
-  headerMeta.textContent = parts.join(' · ');
+  if (headerMeta) {
+    if (m) {
+      const dt = m.built_at ? new Date(m.built_at).toISOString().slice(0, 19).replace('T', ' ') + ' UTC' : '';
+      const parts = [
+        dt && `built ${dt}`,
+        typeof m.shows === 'number' && `${m.shows.toLocaleString()} shows`,
+        typeof m.snapshots === 'number' && `${m.snapshots.toLocaleString()} snapshots`,
+        typeof m.csv_files === 'number' && `${m.csv_files} CSV files`,
+      ].filter(Boolean);
+      headerMeta.textContent = parts.join(' · ');
+    } else {
+      headerMeta.textContent = '';
+    }
+  }
+  sqlBox.value = buildDefaultQuery(m?.built_at);
+  runCurrent();
 });
-
-// Auto-run on load.
-runCurrent();
 
 async function runCurrent() {
   const sql = sqlBox.value.trim();
@@ -132,5 +162,5 @@ function renderCell(colName, value, showId) {
   }
 
   const isNumeric = typeof value === 'number' || typeof value === 'bigint';
-  return el('td', { class: isNumeric ? 'num' : null }, formatCell(value));
+  return el('td', { class: isNumeric ? 'num' : null }, formatCell(value, { columnName: colName }));
 }

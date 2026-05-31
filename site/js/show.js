@@ -142,7 +142,7 @@ function renderHistory(columns, rows) {
     for (let i = 0; i < columns.length; i++) {
       const v = row[i];
       const isNumeric = typeof v === 'number' || typeof v === 'bigint';
-      tr.appendChild(el('td', { class: isNumeric ? 'num' : null }, formatCell(v)));
+      tr.appendChild(el('td', { class: isNumeric ? 'num' : null }, formatCell(v, { columnName: columns[i] })));
     }
     tbody.appendChild(tr);
   }
