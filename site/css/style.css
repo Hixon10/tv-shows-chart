@@ -64,6 +64,8 @@ header.site-header {
 }
 header.site-header h1 { margin: 0; font-size: 18px; }
 header.site-header nav a { margin-right: 12px; }
+header.site-header nav a.repo-link { color: var(--fg-muted); }
+header.site-header nav a.repo-link:hover { color: var(--accent); }
 header.site-header .meta { color: var(--fg-muted); font-size: 12px; }
 
 main { padding: 16px 20px; max-width: 1280px; margin: 0 auto; }
