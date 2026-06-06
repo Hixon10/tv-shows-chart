@@ -6,21 +6,23 @@
 import { runQuery } from './duckdb-bootstrap.js';
 import {
   el, clear, urlHostLabel, formatCell, setStatus, fetchBuildMeta, isShowId,
+  nextSortDirection, sortRows, sortableHeaderCell,
 } from './helpers.js';
 
-const DEFAULT_QUERY_HEADER = `-- Hot shows this month: chart top-20 on IMDb or Kinopoisk during the current
--- month (at build time), restricted to recently released shows.
+const DEFAULT_QUERY_HEADER = `-- Hot shows: chart top-20 on IMDb or Kinopoisk during a build-time
+-- lookback window, restricted to recently released shows.
+-- The start date below is calculated as the build day minus 30 days.
 -- Each WHERE line below is independently editable — change ranks, the release
 -- year cutoff, the date window, or which sources qualify.`;
 
 function buildDefaultQuery(builtAt) {
   const dt = builtAt ? new Date(builtAt) : new Date();
-  const y  = dt.getUTCFullYear();
-  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(dt.getUTCDate()).padStart(2, '0');
-  const startOfMonth = `${y}-${mm}-01`;
-  const buildDay     = `${y}-${mm}-${dd}`;
-  const recentReleaseSince = y - 1;
+  const buildDate = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()));
+  const windowStartDate = new Date(buildDate);
+  windowStartDate.setUTCDate(windowStartDate.getUTCDate() - 30);
+  const windowStart = formatUtcDate(windowStartDate);
+  const buildDay = formatUtcDate(buildDate);
+  const recentReleaseSince = buildDate.getUTCFullYear() - 1;
   return `${DEFAULT_QUERY_HEADER}
 SELECT
   sh.show_id, sh.assumed_title, sh.title_ru, sh.release_year,
@@ -34,7 +36,7 @@ SELECT
   BOOL_OR(n.source = 'kinopoisk')      AS hit_kinopoisk
 FROM snapshots n
 JOIN shows sh USING (show_id)
-WHERE n.scrape_date >= DATE '${startOfMonth}'        -- start of current month (build time)
+WHERE n.scrape_date >= DATE '${windowStart}'        -- build day minus 30 days (lower bound)
   AND n.scrape_date <= DATE '${buildDay}'            -- build day (upper bound)
   AND n.rank BETWEEN 1 AND 20                          -- chart positions to include
   AND sh.release_year >= ${recentReleaseSince}                       -- only recently released shows
@@ -46,11 +48,21 @@ ORDER BY best_rank_in_window ASC, days_in_window DESC, avg_rank_in_window ASC
 LIMIT 100;`;
 }
 
+function formatUtcDate(dt) {
+  const y = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getUTCDate()).padStart(2, '0');
+  return `${y}-${mm}-${dd}`;
+}
+
 const sqlBox    = document.getElementById('sql');
 const runBtn    = document.getElementById('run');
 const statusBox = document.getElementById('status');
 const table     = document.getElementById('results');
 const hint      = document.getElementById('results-hint');
+let resultColumns = [];
+let resultRows = [];
+let resultSort = null;
 
 runBtn.addEventListener('click', () => runCurrent());
 sqlBox.addEventListener('keydown', (e) => {
@@ -92,19 +104,37 @@ async function runCurrent() {
   try {
     const { columns, rows } = await runQuery(sql);
     const ms = Math.round(performance.now() - t0);
-    renderTable(columns, rows);
+    resultColumns = columns;
+    resultRows = rows;
+    resultSort = null;
+    renderTable();
     setStatus(statusBox, 'info', `${rows.length} row${rows.length === 1 ? '' : 's'} in ${ms} ms`);
   } catch (err) {
     console.error(err);
     setStatus(statusBox, 'error', String(err && err.message ? err.message : err));
+    resultColumns = [];
+    resultRows = [];
+    resultSort = null;
     clear(table);
   } finally {
     runBtn.disabled = false;
   }
 }
 
-function renderTable(columns, rows) {
+function sortByColumn(columnIndex) {
+  resultSort = {
+    columnIndex,
+    direction: nextSortDirection(resultSort, columnIndex),
+  };
+  renderTable();
+}
+
+function renderTable() {
   clear(table);
+  const columns = resultColumns;
+  const rows = resultSort
+    ? sortRows(resultRows, resultSort.columnIndex, resultSort.direction)
+    : resultRows;
   const showIdIdx = columns.indexOf('show_id');
   // Hide show_id only when at least one title column is present to receive
   // the per-show drill-down link. Otherwise render show_id itself as the
@@ -117,7 +147,8 @@ function renderTable(columns, rows) {
 
   // header
   const thead = el('thead', {},
-    el('tr', {}, ...visibleColumns.map((c) => el('th', {}, c.name)))
+    el('tr', {}, ...visibleColumns.map((c) =>
+      sortableHeaderCell(c.name, resultSort, c.i, () => sortByColumn(c.i))))
   );
   table.appendChild(thead);
 

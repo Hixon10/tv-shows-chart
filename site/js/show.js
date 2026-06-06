@@ -6,6 +6,7 @@ import { runQuery } from './duckdb-bootstrap.js';
 import {
   el, clear, urlHostLabel, formatCell, setStatus,
   fetchBuildMeta, getQueryParam, isShowId,
+  nextSortDirection, sortRows, sortableHeaderCell,
 } from './helpers.js';
 
 const statusBox = document.getElementById('status');
@@ -14,6 +15,9 @@ const subtitle  = document.getElementById('subtitle');
 const linksBox  = document.getElementById('links');
 const statGrid  = document.getElementById('stat-grid');
 const histTable = document.getElementById('history');
+let historyColumns = [];
+let historyRows = [];
+let historySort = null;
 
 fetchBuildMeta().then((m) => {
   const headerMeta = document.getElementById('build-meta');
@@ -67,7 +71,10 @@ async function main() {
      ORDER BY scrape_date DESC, source`,
     [id],
   );
-  renderHistory(histQ.columns, histQ.rows);
+  historyColumns = histQ.columns;
+  historyRows = histQ.rows;
+  historySort = null;
+  renderHistory();
 
   setStatus(statusBox, 'info',
     `${histQ.rows.length} daily rank record${histQ.rows.length === 1 ? '' : 's'}`);
@@ -126,15 +133,28 @@ function renderStats(r) {
   }
 }
 
-function renderHistory(columns, rows) {
+function sortHistoryByColumn(columnIndex) {
+  historySort = {
+    columnIndex,
+    direction: nextSortDirection(historySort, columnIndex),
+  };
+  renderHistory();
+}
+
+function renderHistory() {
   clear(histTable);
+  const columns = historyColumns;
+  const rows = historySort
+    ? sortRows(historyRows, historySort.columnIndex, historySort.direction)
+    : historyRows;
   histTable.appendChild(
-    el('thead', {}, el('tr', {}, ...columns.map((c) => el('th', {}, c)))),
+    el('thead', {}, el('tr', {}, ...columns.map((c, i) =>
+      sortableHeaderCell(c, historySort, i, () => sortHistoryByColumn(i))))),
   );
   const tbody = el('tbody');
   if (rows.length === 0) {
     tbody.appendChild(
-      el('tr', {}, el('td', { class: 'empty', colspan: String(columns.length) }, '(no rows)')),
+      el('tr', {}, el('td', { class: 'empty', colspan: String(columns.length || 1) }, '(no rows)')),
     );
   }
   for (const row of rows) {

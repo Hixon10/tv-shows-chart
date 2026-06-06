@@ -13,6 +13,49 @@ if (!execPath) throw new Error('No system Chrome/Edge found');
 
 const BASE = process.argv[2] || 'http://localhost:8123';
 
+async function assertSortableNumericColumn(page, tableSelector, columnName) {
+  const columnIndex = await page.evaluate(({ tableSelector, columnName }) => {
+    const headers = [...document.querySelectorAll(`${tableSelector} thead th`)];
+    return headers.findIndex((h) =>
+      (h.querySelector('.sort-label')?.textContent ?? h.textContent).trim() === columnName);
+  }, { tableSelector, columnName });
+  if (columnIndex < 0) throw new Error(`${tableSelector} missing sortable column ${columnName}`);
+  const buttonSelector = `${tableSelector} thead th:nth-child(${columnIndex + 1}) button.sort-header`;
+
+  await page.click(buttonSelector);
+  let summary = await sortableSummary(page, tableSelector, columnIndex);
+  if (summary.ariaSort !== 'ascending') {
+    throw new Error(`${tableSelector} ${columnName} did not switch to ascending sort`);
+  }
+  if (!summary.sortedAscending) {
+    throw new Error(`${tableSelector} ${columnName} values are not ascending after sort`);
+  }
+
+  await page.click(buttonSelector);
+  summary = await sortableSummary(page, tableSelector, columnIndex);
+  if (summary.ariaSort !== 'descending') {
+    throw new Error(`${tableSelector} ${columnName} did not switch to descending sort`);
+  }
+  if (!summary.sortedDescending) {
+    throw new Error(`${tableSelector} ${columnName} values are not descending after sort`);
+  }
+
+  async function sortableSummary(page, tableSelector, columnIndex) {
+    return page.evaluate(({ tableSelector, columnIndex }) => {
+      const values = [...document.querySelectorAll(`${tableSelector} tbody tr`)]
+        .map((tr) => tr.children[columnIndex]?.textContent.trim() ?? '')
+        .filter((v) => v !== '' && v !== '(no rows)')
+        .map((v) => Number(v.replace(/,/g, '')));
+      const sortedAscending = values.every((v, i) => i === 0 || values[i - 1] <= v);
+      const sortedDescending = values.every((v, i) => i === 0 || values[i - 1] >= v);
+      const ariaSort = document
+        .querySelector(`${tableSelector} thead th:nth-child(${columnIndex + 1})`)
+        ?.getAttribute('aria-sort');
+      return { values, sortedAscending, sortedDescending, ariaSort };
+    }, { tableSelector, columnIndex });
+  }
+}
+
 const browser = await puppeteer.launch({
   executablePath: execPath,
   headless: true,
@@ -49,7 +92,8 @@ try {
   }
   const summary = await page.evaluate(() => {
     const rows = [...document.querySelectorAll('#results tbody tr')];
-    const headers = [...document.querySelectorAll('#results thead th')].map(h => h.textContent);
+    const headers = [...document.querySelectorAll('#results thead th')]
+      .map(h => h.querySelector('.sort-label')?.textContent ?? h.textContent);
     const firstRowLinks = rows[0]
       ? [...rows[0].querySelectorAll('a')].map(a => ({ text: a.textContent, href: a.getAttribute('href') }))
       : [];
@@ -65,6 +109,31 @@ try {
   if (!summary.firstRowLinks.some((l) => l.href?.startsWith('show.html?id='))) {
     throw new Error('main page first row missing per-show link');
   }
+  const defaultQueryWindow = await page.evaluate(async () => {
+    const meta = await fetch('data/build-meta.json', { cache: 'no-cache' }).then((r) => r.json());
+    const builtAt = new Date(meta.built_at);
+    const buildDate = new Date(Date.UTC(
+      builtAt.getUTCFullYear(),
+      builtAt.getUTCMonth(),
+      builtAt.getUTCDate(),
+    ));
+    const startDate = new Date(buildDate);
+    startDate.setUTCDate(startDate.getUTCDate() - 30);
+    const fmt = (dt) =>
+      `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+    return {
+      expectedStart: fmt(startDate),
+      expectedBuild: fmt(buildDate),
+      sql: document.querySelector('#sql')?.value ?? '',
+    };
+  });
+  if (!defaultQueryWindow.sql.includes(`DATE '${defaultQueryWindow.expectedStart}'`)) {
+    throw new Error(`default query missing 30-day start literal ${defaultQueryWindow.expectedStart}`);
+  }
+  if (!defaultQueryWindow.sql.includes(`DATE '${defaultQueryWindow.expectedBuild}'`)) {
+    throw new Error(`default query missing build-day literal ${defaultQueryWindow.expectedBuild}`);
+  }
+  await assertSortableNumericColumn(page, '#results', 'max_score_in_window');
 
   // Grab a show_id from the first title link to test the show page.
   const showHref = summary.firstRowLinks.find((l) => l.href.startsWith('show.html?id='))?.href;
@@ -92,6 +161,7 @@ try {
   console.log('show page summary:', JSON.stringify(showSummary, null, 2));
   if (showSummary.error) throw new Error('show page rendered error: ' + showSummary.error);
   if (showSummary.historyRows === 0) throw new Error('show page produced 0 history rows');
+  await assertSortableNumericColumn(page, '#history', 'score');
 
   console.log('\nAll end-to-end checks passed.');
 } catch (e) {
