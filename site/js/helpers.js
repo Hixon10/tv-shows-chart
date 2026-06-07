@@ -48,6 +48,58 @@ export function formatCell(value, opts = {}) {
   return String(value);
 }
 
+const SORT_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+export function nextSortDirection(sortState, columnIndex) {
+  return sortState?.columnIndex === columnIndex && sortState.direction === 'asc' ? 'desc' : 'asc';
+}
+
+export function sortRows(rows, columnIndex, direction = 'asc') {
+  const sign = direction === 'desc' ? -1 : 1;
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const av = a.row[columnIndex];
+      const bv = b.row[columnIndex];
+      const aEmpty = isEmptySortValue(av);
+      const bEmpty = isEmptySortValue(bv);
+      if (aEmpty || bEmpty) {
+        if (aEmpty && bEmpty) return a.index - b.index;
+        return aEmpty ? 1 : -1;
+      }
+      const cmp = compareSortValues(av, bv);
+      return cmp === 0 ? a.index - b.index : cmp * sign;
+    })
+    .map(({ row }) => row);
+}
+
+function isEmptySortValue(v) {
+  return v == null || v === '';
+}
+
+function compareSortValues(a, b) {
+  const av = sortableValue(a);
+  const bv = sortableValue(b);
+  if (av.kind === 'number' && bv.kind === 'number') {
+    return compareNumbers(av.value, bv.value);
+  }
+  return SORT_COLLATOR.compare(av.value, bv.value);
+}
+
+function sortableValue(v) {
+  if (v instanceof Date) return { kind: 'number', value: v.getTime() };
+  if (typeof v === 'number' && Number.isFinite(v)) return { kind: 'number', value: v };
+  if (typeof v === 'bigint') return { kind: 'number', value: Number(v) };
+  if (typeof v === 'boolean') return { kind: 'number', value: v ? 1 : 0 };
+  return { kind: 'string', value: String(v) };
+}
+
+function compareNumbers(a, b) {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+
 export function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -66,6 +118,26 @@ export function el(tag, attrs = {}, ...children) {
 
 export function clear(node) {
   while (node.firstChild) node.removeChild(node.firstChild);
+}
+
+export function sortableHeaderCell(label, sortState, columnIndex, onSort) {
+  const active = sortState?.columnIndex === columnIndex;
+  const direction = active ? sortState.direction : null;
+  return el('th', {
+    class: 'sortable',
+    'aria-sort': active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none',
+  },
+    el('button', {
+      type: 'button',
+      class: 'sort-header',
+      title: `Sort by ${label}`,
+      onclick: onSort,
+    },
+      el('span', { class: 'sort-label' }, label),
+      el('span', { class: 'sort-indicator', 'aria-hidden': 'true' },
+        active ? (direction === 'asc' ? '▲' : '▼') : '↕'),
+    ),
+  );
 }
 
 export function setStatus(node, kind, message) {
